@@ -20,9 +20,9 @@ from stable_baselines import logger
 from stable_baselines import PPO2, A2C, ACER, ACKTR, DQN, HER, SAC, TD3
 # DDPG and TRPO require MPI to be installed
 if mpi4py is None:
-    DDPG, TRPO = None, None
+    DDPG, TRPO, GAIL = None, None, None
 else:
-    from stable_baselines import DDPG, TRPO
+    from stable_baselines import DDPG, TRPO, GAIL
 
 from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize, \
     VecFrameStack, SubprocVecEnv
@@ -39,7 +39,8 @@ ALGOS = {
     'sac': SAC,
     'ppo2': PPO2,
     'trpo': TRPO,
-    'td3': TD3
+    'td3': TD3,
+    'gail': GAIL
 }
 
 

@@ -17,6 +17,7 @@ import numpy as np
 import yaml
 # Optional dependencies
 import utils.import_envs  # pytype: disable=import-error
+
 try:
     import mpi4py
     from mpi4py import MPI
@@ -38,6 +39,7 @@ from utils.callbacks import SaveVecNormalizeCallback
 from utils.noise import LinearNormalActionNoise
 from utils.utils import StoreDict
 
+from stable_baselines.gail import ExpertDataset, generate_expert_traj
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -45,8 +47,18 @@ if __name__ == '__main__':
     parser.add_argument('-tb', '--tensorboard-log', help='Tensorboard log dir', default='', type=str)
     parser.add_argument('-i', '--trained-agent', help='Path to a pretrained agent to continue training',
                         default='', type=str)
-    parser.add_argument('--algo', help='RL Algorithm', default='ppo2',
+    parser.add_argument('--algo', help='RL Algorithm', default='gail',
                         type=str, required=False, choices=list(ALGOS.keys()))
+    # gail parameter setting added by Liang
+    parser.add_argument('--expert-algo', help='expert RL Algorithm', default='ppo2',
+                        type=str, required=False, choices=list(ALGOS.keys()))
+    parser.add_argument('--expert-model', help='expert RL model path', default='trained_agents/ppo2',
+                        type=str, required=False, choices=list(ALGOS.keys()))
+    parser.add_argument('--expert-path', help='GAIL demonstration path', default='CartPole-v1_ppo2_expert.npz',
+                        type=str, required=False)
+    parser.add_argument('--demo-number', help='GAIL demonstration number', default=20,
+                        type=int, required=False)
+    # end gail parameter setting
     parser.add_argument('-n', '--n-timesteps', help='Overwrite the number of timesteps', default=-1,
                         type=int)
     parser.add_argument('--log-interval', help='Override log interval (default: -1, no change)', default=-1,
@@ -98,7 +110,7 @@ if __name__ == '__main__':
     uuid_str = '_{}'.format(uuid.uuid4()) if args.uuid else ''
     if args.seed < 0:
         # Seed but with a random one
-        args.seed = np.random.randint(2**32 - 1)
+        args.seed = np.random.randint(2 ** 32 - 1)
 
     set_global_seeds(args.seed)
 
@@ -225,6 +237,7 @@ if __name__ == '__main__':
 
     env_kwargs = {} if args.env_kwargs is None else args.env_kwargs
 
+
     def create_env(n_envs, eval_env=False, no_log=False):
         """
         Create the environment and wrap it if necessary
@@ -255,7 +268,8 @@ if __name__ == '__main__':
                 env = env_wrapper(env)
         else:
             if n_envs == 1:
-                env = DummyVecEnv([make_env(env_id, 0, args.seed, wrapper_class=env_wrapper, log_dir=log_dir, env_kwargs=env_kwargs)])
+                env = DummyVecEnv(
+                    [make_env(env_id, 0, args.seed, wrapper_class=env_wrapper, log_dir=log_dir, env_kwargs=env_kwargs)])
             else:
                 # env = SubprocVecEnv([make_env(env_id, i, args.seed) for i in range(n_envs)])
                 # On most env, SubprocVecEnv does not help and is quite memory hungry
@@ -290,6 +304,26 @@ if __name__ == '__main__':
             env = HERGoalEnvWrapper(env)
         return env
 
+    def generate_demo(model):
+        if args.expert_path != None:
+            print("Loading expert demonstration")
+            dataset = ExpertDataset(expert_path=args.expert_path)
+            model.expert_dataset = dataset
+        else:
+            print("Generating expert demonstration")
+            if args.expert_model != None:
+                args.expert_model = args.expert_model + '/' + args.env + '.pkl'
+                # expert_model = ALGOS[args.expert_algo].load(args.expert_model, env=env,
+                #                   tensorboard_log=tensorboard_log, verbose=args.verbose, **hyperparams)
+                expert_model = ALGOS[args.expert_algo].load(args.expert_model, env=env)
+                expert_demos = args.env + '_' + args.expert_algo + '_expert'
+                generate_expert_traj(expert_model, expert_demos, n_episodes=args.demo_number)
+                dataset = ExpertDataset(expert_path=expert_demos + '.npz')
+                model.expert_dataset = dataset
+            else:
+                print("No expert to generate demos")
+                raise ValueError('No expert to generate demos')
+        return model
 
     env = create_env(n_envs)
     # Create test env if needed, do not normalize reward
@@ -329,7 +363,9 @@ if __name__ == '__main__':
             if 'lin' in noise_type:
                 hyperparams['action_noise'] = LinearNormalActionNoise(mean=np.zeros(n_actions),
                                                                       sigma=noise_std * np.ones(n_actions),
-                                                                      final_sigma=hyperparams.get('noise_std_final', 0.0) * np.ones(n_actions),
+                                                                      final_sigma=hyperparams.get('noise_std_final',
+                                                                                                  0.0) * np.ones(
+                                                                          n_actions),
                                                                       max_steps=n_timesteps)
             else:
                 hyperparams['action_noise'] = NormalActionNoise(mean=np.zeros(n_actions),
@@ -357,6 +393,9 @@ if __name__ == '__main__':
         model = ALGOS[args.algo].load(args.trained_agent, env=env,
                                       tensorboard_log=tensorboard_log, verbose=args.verbose, **hyperparams)
 
+        if args.algo == 'gail':
+            model = generate_demo(model)
+
         exp_folder = args.trained_agent[:-4]
         if normalize:
             print("Loading saved running average")
@@ -372,12 +411,17 @@ if __name__ == '__main__':
         if args.verbose > 0:
             print("Optimizing hyperparameters")
 
+
         def create_model(*_args, **kwargs):
             """
             Helper to create a model with different hyperparameters
             """
-            return ALGOS[args.algo](env=create_env(n_envs, no_log=True), tensorboard_log=tensorboard_log,
+            ret_model = ALGOS[args.algo](env=create_env(n_envs, no_log=True), tensorboard_log=tensorboard_log,
                                     verbose=0, **kwargs)
+            if args.algo == 'gail':
+                ret_model = generate_demo(ret_model)
+            return ret_model
+
 
         data_frame = hyperparam_optimization(args.algo, create_model, create_env, n_trials=args.n_trials,
                                              n_timesteps=n_timesteps, hyperparams=hyperparams,
@@ -386,7 +430,7 @@ if __name__ == '__main__':
                                              verbose=args.verbose)
 
         report_name = "report_{}_{}-trials-{}-{}-{}_{}.csv".format(env_id, args.n_trials, n_timesteps,
-                                                                args.sampler, args.pruner, int(time.time()))
+                                                                   args.sampler, args.pruner, int(time.time()))
 
         log_path = os.path.join(args.log_folder, args.algo, report_name)
 
@@ -399,6 +443,10 @@ if __name__ == '__main__':
     else:
         # Train an agent from scratch
         model = ALGOS[args.algo](env=env, tensorboard_log=tensorboard_log, verbose=args.verbose, **hyperparams)
+
+        if args.algo == 'gail':
+            model = generate_demo(model)
+
 
     kwargs = {}
     if args.log_interval > -1:
