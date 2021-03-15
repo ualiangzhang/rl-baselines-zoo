@@ -51,7 +51,7 @@ CartPole-v1:
   d_step: 1
   g_step: 3
   d_stepsize: !!float 3e-4
-  n_timesteps: !!float 1e6
+  n_timesteps: !!float 1e4
   policy: 'MlpPolicy'
   timesteps_per_batch: 128
   max_kl: 0.001

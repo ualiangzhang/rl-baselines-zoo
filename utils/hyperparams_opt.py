@@ -333,6 +333,43 @@ def sample_trpo_params(trial):
         'vf_iters': vf_iters
     }
 
+def sample_gail_params(trial):
+    """
+    Sampler for GAIL hyperparams.
+
+    :param trial: (optuna.trial)
+    :return: (dict)
+    """
+    gamma = trial.suggest_categorical('gamma', [0.9, 0.95, 0.98, 0.99, 0.995, 0.999])
+    timesteps_per_batch = trial.suggest_categorical('timesteps_per_batch', [128, 256, 512, 1024, 2048, 4096])
+    max_kl = trial.suggest_categorical('max_kl', [0.00001, 0.0001, 0.001, 0.01, 0.1, 1])
+    ent_coef = trial.suggest_categorical('ent_coef', [0.00001, 0.0001, 0.001, 0.01, 0.1])
+    lam = trial.suggest_categorical('lam', [0.8, 0.9, 0.92, 0.95, 0.98, 0.99, 1.0])
+    cg_damping = trial.suggest_categorical('cg_damping', [0.00001, 0.0001, 0.001, 0.01, 0.1, 1])
+
+    cg_iters = trial.suggest_categorical('cg_iters', [10, 15, 20, 30])
+    vf_stepsize = trial.suggest_categorical('vf_stepsize', [0.00001, 0.0001, 0.001, 0.01, 0.1, 1])
+    vf_iters = trial.suggest_categorical('vf_iters', [1, 3, 5, 10, 20])
+
+    d_step = trial.suggest_categorical('d_step', [1, 5, 10, 20, 30])
+    g_step = trial.suggest_categorical('g_step', [1, 5, 10, 20, 30])
+    d_stepsize = trial.suggest_categorical('d_stepsize', [0.0001, 0.0003, 0.0005, 0.001, 0.005, 0.01])
+
+    return {
+        'gamma': gamma,
+        'timesteps_per_batch': timesteps_per_batch,
+        'max_kl': max_kl,
+        'entcoeff': ent_coef,
+        'lam': lam,
+        'cg_damping': cg_damping,
+        'cg_iters': cg_iters,
+        'vf_stepsize': vf_stepsize,
+        'vf_iters': vf_iters,
+        'd_step': d_step,
+        'g_step': g_step,
+        'd_stepsize': d_stepsize
+    }
+
 
 def sample_ddpg_params(trial):
     """
@@ -404,5 +441,6 @@ HYPERPARAMS_SAMPLER = {
     'ddpg': sample_ddpg_params,
     'her': sample_her_params,
     'acktr': sample_acktr_params,
-    'td3': sample_td3_params
+    'td3': sample_td3_params,
+    'gail': sample_gail_params
 }
