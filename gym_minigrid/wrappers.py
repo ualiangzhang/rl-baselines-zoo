@@ -758,9 +758,9 @@ class HumanFOVWrapper(gym.core.Wrapper):
         # Compute observation space
         observation_space = gym.spaces.Box(
             low=0,
-            high=255,
+            high=1,
             shape=(43,),
-            dtype='uint8'
+            dtype='float32'
         )
 
         # rl-zoo doesn't support dictionary
@@ -881,7 +881,7 @@ class HumanFOVWrapper(gym.core.Wrapper):
             self.sim_state[-2] = 0
         self.sim_state[-1] = self.triaging_time
 
-        return copy.deepcopy(self.sim_state.astype('uint8'))
+        return copy.deepcopy((self.sim_state / 255).astype('float32'))
 
     def check_remaining_goals(self):
         if self.goals_acheived == self.total_goals:

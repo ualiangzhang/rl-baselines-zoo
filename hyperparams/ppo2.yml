@@ -343,7 +343,7 @@ MiniGrid-FourRooms-v0:
   cliprange: 0.2
 
 MiniGrid-MinimapForFalcon-v0:
-  env_wrapper: gym_minigrid.wrappers.HumanFOVWrapper # requires --gym-packages gym_minigrid
+  env_wrapper: [gym_minigrid.wrappers.HumanFOVWrapper, gym_minigrid.wrappers.StateBonus] # requires --gym-packages gym_minigrid
   normalize: true
   n_envs: 8
   n_timesteps: !!float 4e6

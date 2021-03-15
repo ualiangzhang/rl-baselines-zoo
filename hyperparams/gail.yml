@@ -180,8 +180,8 @@ BipedalWalkerHardcore-v3:
 
 MiniGrid-MinimapForFalcon-v0:
   env_wrapper: gym_minigrid.wrappers.HumanFOVWrapper # requires --gym-packages gym_minigrid
-  hidden_size_adversary: 64
-  policy_kwargs: "dict(net_arch=[dict(pi=[64, 64], vf=[64, 64])])"
+  hidden_size_adversary: 128
+  policy_kwargs: "dict(net_arch=[dict(pi=[128, 128], vf=[128, 128])])"
   d_step: 1
   g_step: 3
   d_stepsize: !!float 3e-4

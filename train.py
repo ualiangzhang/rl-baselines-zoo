@@ -43,6 +43,7 @@ from utils.utils import StoreDict
 
 from stable_baselines.gail import ExpertDataset, generate_expert_traj
 import gym_minigrid  # import Falcon environment
+from pathlib import Path
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -50,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('-tb', '--tensorboard-log', help='Tensorboard log dir', default='', type=str)
     parser.add_argument('-i', '--trained-agent', help='Path to a pretrained agent to continue training',
                         default='', type=str)
-    parser.add_argument('--algo', help='RL Algorithm', default='ppo2',
+    parser.add_argument('--algo', help='RL Algorithm', default='gail',
                         type=str, required=False, choices=list(ALGOS.keys()))
     # gail parameter setting added by Liang
     parser.add_argument('--expert-algo', help='expert RL Algorithm', default='ppo2',
@@ -315,10 +316,12 @@ if __name__ == '__main__':
         return env
 
     def generate_demo(model):
-        if args.algo == 'MiniGrid-MinimapForFalcon-v0':
-            expert_demos = args.env + '_' + args.expert_algo + '_expert'
-            generate_expert_traj(expert_model, expert_demos, n_episodes=args.demo_number)
-            dataset = ExpertDataset(expert_path=expert_demos + '.npz')
+        if args.env == 'MiniGrid-MinimapForFalcon-v0':
+            expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '.npz'
+            demo_file = Path(expert_demos)
+            if not demo_file.is_file():
+                record_demos.generate_expert_traj()
+            dataset = ExpertDataset(expert_path=demo_file)
             model.expert_dataset = dataset
             return model
         if args.expert_path != None:
