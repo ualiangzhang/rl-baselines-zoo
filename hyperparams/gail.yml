@@ -49,8 +49,8 @@ CartPole-v1:
   hidden_size_adversary: 64
   policy_kwargs: "dict(net_arch=[dict(pi=[64, 64], vf=[64, 64])])"
   d_step: 1
-  g_step: 1
-  d_stepsize: 3e-4
+  g_step: 3
+  d_stepsize: !!float 3e-4
   n_timesteps: !!float 1e6
   policy: 'MlpPolicy'
   timesteps_per_batch: 128

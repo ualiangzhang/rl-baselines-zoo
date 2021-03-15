@@ -54,7 +54,7 @@ if __name__ == '__main__':
                         type=str, required=False, choices=list(ALGOS.keys()))
     parser.add_argument('--expert-model', help='expert RL model path', default='trained_agents/ppo2',
                         type=str, required=False, choices=list(ALGOS.keys()))
-    parser.add_argument('--expert-path', help='GAIL demonstration path', default='CartPole-v1_ppo2_expert.npz',
+    parser.add_argument('--expert-path', help='GAIL demonstration path', default='expert_data/CartPole-v1_ppo2_expert.npz',
                         type=str, required=False)
     parser.add_argument('--demo-number', help='GAIL demonstration number', default=20,
                         type=int, required=False)
@@ -463,6 +463,8 @@ if __name__ == '__main__':
 
     try:
         model.learn(n_timesteps, **kwargs)
+    # except Exception as e:
+    #     print(e)
     except KeyboardInterrupt:
         pass
     finally:
