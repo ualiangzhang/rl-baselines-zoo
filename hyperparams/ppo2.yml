@@ -341,3 +341,18 @@ MiniGrid-FourRooms-v0:
   ent_coef: 0.0
   learning_rate: 2.5e-4
   cliprange: 0.2
+
+MiniGrid-MinimapForFalcon-v0:
+  env_wrapper: gym_minigrid.wrappers.HumanFOVWrapper # requires --gym-packages gym_minigrid
+  normalize: true
+  n_envs: 8
+  n_timesteps: !!float 4e6
+  policy: 'MlpPolicy'
+  n_steps: 512
+  nminibatches: 32
+  lam: 0.95
+  gamma: 0.99
+  noptepochs: 10
+  ent_coef: 0.0
+  learning_rate: 2.5e-4
+  cliprange: 0.2

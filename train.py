@@ -10,7 +10,9 @@ from collections import OrderedDict
 
 # numpy warnings because of tensorflow
 warnings.filterwarnings("ignore", category=FutureWarning, module='tensorflow')
+warnings.filterwarnings("ignore", category=Warning, module='tensorflow')
 warnings.filterwarnings("ignore", category=UserWarning, module='gym')
+warnings.filterwarnings("ignore", category=UserWarning, module='stable_baselines')
 
 import gym
 import numpy as np
@@ -33,21 +35,22 @@ from stable_baselines.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines.her import HERGoalEnvWrapper
 from stable_baselines.common.base_class import _UnvecWrapper
 
-from utils import make_env, ALGOS, linear_schedule, get_latest_run_id, get_wrapper_class
+from utils import make_env, ALGOS, linear_schedule, get_latest_run_id, get_wrapper_class, record_demos
 from utils.hyperparams_opt import hyperparam_optimization
 from utils.callbacks import SaveVecNormalizeCallback
 from utils.noise import LinearNormalActionNoise
 from utils.utils import StoreDict
 
 from stable_baselines.gail import ExpertDataset, generate_expert_traj
+import gym_minigrid  # import Falcon environment
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default="CartPole-v1", help='environment ID')
+    parser.add_argument('--env', type=str, default="MiniGrid-MinimapForFalcon-v0", help='environment ID')
     parser.add_argument('-tb', '--tensorboard-log', help='Tensorboard log dir', default='', type=str)
     parser.add_argument('-i', '--trained-agent', help='Path to a pretrained agent to continue training',
                         default='', type=str)
-    parser.add_argument('--algo', help='RL Algorithm', default='gail',
+    parser.add_argument('--algo', help='RL Algorithm', default='ppo2',
                         type=str, required=False, choices=list(ALGOS.keys()))
     # gail parameter setting added by Liang
     parser.add_argument('--expert-algo', help='expert RL Algorithm', default='ppo2',
@@ -89,6 +92,13 @@ if __name__ == '__main__':
                         help='Ensure that the run has a unique ID')
     parser.add_argument('--env-kwargs', type=str, nargs='+', action=StoreDict,
                         help='Optional keyword argument to pass to the env constructor')
+    # Falcon game settings
+    parser.add_argument('--level', type=str, default='easy',
+                        help='game level for Falcon training')
+    parser.add_argument('--strategy', type=str, default='yellow',
+                        help='game strategy for Falcon training')
+    parser.add_argument('--test_set_ratio', type=int, default=0.1,
+                        help='test set ratio in the all demonstrations for Falcon training')
     args = parser.parse_args()
 
     # Going through custom gym packages to let them register in the global registory
@@ -305,6 +315,12 @@ if __name__ == '__main__':
         return env
 
     def generate_demo(model):
+        if args.algo == 'MiniGrid-MinimapForFalcon-v0':
+            expert_demos = args.env + '_' + args.expert_algo + '_expert'
+            generate_expert_traj(expert_model, expert_demos, n_episodes=args.demo_number)
+            dataset = ExpertDataset(expert_path=expert_demos + '.npz')
+            model.expert_dataset = dataset
+            return model
         if args.expert_path != None:
             print("Loading expert demonstration")
             dataset = ExpertDataset(expert_path=args.expert_path)
