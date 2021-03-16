@@ -23,7 +23,7 @@ from utils.action_parser import json_to_action
 # RESOURCES_DIR = (Path(__file__).parent / './human_subjects_data').resolve()
 
 
-def generate_expert_traj():
+def generate_expert_traj(test_set_ratio):
     """
     Record expert trajectories for Falcon training.
 
@@ -78,19 +78,26 @@ def generate_expert_traj():
                 print('failed file: ' + file_name)
                 action_parser.invalid_data_found = False
 
-    e_y_demos = wrap_data(e_y_demos, 'easy')
-    e_o_demos = wrap_data(e_o_demos, 'easy')
-    m_y_demos = wrap_data(m_y_demos, 'medium')
-    m_o_demos = wrap_data(m_o_demos, 'medium')
-    d_y_demos = wrap_data(d_y_demos, 'difficult')
-    d_o_demos = wrap_data(d_o_demos, 'difficult')
+    gen_training_and_test_sets(e_y_demos, 'easy', 'yellow', test_set_ratio, e_y_num)
+    gen_training_and_test_sets(e_o_demos, 'easy', 'opportunistic', test_set_ratio, e_o_num)
+    gen_training_and_test_sets(m_y_demos, 'medium', 'yellow', test_set_ratio, m_y_num)
+    gen_training_and_test_sets(m_o_demos, 'medium', 'opportunistic', test_set_ratio, m_o_num)
+    gen_training_and_test_sets(d_y_demos, 'difficult', 'yellow', test_set_ratio, d_y_num)
+    gen_training_and_test_sets(d_o_demos, 'difficult', 'opportunistic', test_set_ratio, d_o_num)
 
-    np.savez('expert_data/falcon_easy_yellow', **e_y_demos)
-    np.savez('expert_data/falcon_easy_opportunistic', **e_o_demos)
-    np.savez('expert_data/falcon_medium_yellow', **m_y_demos)
-    np.savez('expert_data/falcon_medium_opportunistic', **m_o_demos)
-    np.savez('expert_data/falcon_difficult_yellow', **d_y_demos)
-    np.savez('expert_data/falcon_difficult_opportunistic', **d_o_demos)
+    # e_y_demos = wrap_data(e_y_demos)
+    # e_o_demos = wrap_data(e_o_demos, 'easy')
+    # m_y_demos = wrap_data(m_y_demos, 'medium')
+    # m_o_demos = wrap_data(m_o_demos, 'medium')
+    # d_y_demos = wrap_data(d_y_demos, 'difficult')
+    # d_o_demos = wrap_data(d_o_demos, 'difficult')
+    #
+    # np.savez('expert_data/falcon_easy_yellow', **e_y_demos)
+    # np.savez('expert_data/falcon_easy_opportunistic', **e_o_demos)
+    # np.savez('expert_data/falcon_medium_yellow', **m_y_demos)
+    # np.savez('expert_data/falcon_medium_opportunistic', **m_o_demos)
+    # np.savez('expert_data/falcon_difficult_yellow', **d_y_demos)
+    # np.savez('expert_data/falcon_difficult_opportunistic', **d_o_demos)
 
 
 def collect_demos(demonstrations, expert_actions, difficulty):
@@ -117,12 +124,6 @@ def collect_demos(demonstrations, expert_actions, difficulty):
 
     for action in expert_actions:
         observations.append(obs)
-
-        # if isinstance(model, BaseRLModel):
-        #     action, state = model.predict(obs, state=state, mask=mask)
-        # else:
-        #     action = model(obs)
-
         obs, reward, done, _ = env.step(action)
 
         actions.append(action)
@@ -131,23 +132,9 @@ def collect_demos(demonstrations, expert_actions, difficulty):
         reward_sum += reward
 
         if done:
-            # obs = env.reset()
+            episode_starts.pop(-1)
             episode_returns.append(reward_sum)
-            # reward_sum = 0.0
             break
-
-    # if isinstance(env.observation_space, spaces.Box):
-    #     observations = np.concatenate(observations).reshape((-1,) + env.observation_space.shape)
-    # elif isinstance(env.observation_space, spaces.Discrete):
-    #     observations = np.array(observations).reshape((-1, 1))
-    #
-    # if isinstance(env.action_space, spaces.Box):
-    #     actions = np.concatenate(actions).reshape((-1,) + env.action_space.shape)
-    # elif isinstance(env.action_space, spaces.Discrete):
-    #     actions = np.array(actions).reshape((-1, 1))
-    #
-    # rewards = np.array(rewards)
-    # episode_starts = np.array(episode_starts[:-1])
 
     assert len(observations) == len(actions)
 
@@ -159,19 +146,13 @@ def collect_demos(demonstrations, expert_actions, difficulty):
         'episode_starts': episode_starts
     }  # type: Dict[str, list]
 
-    # for key, val in numpy_dict.items():
-    #     print(key, val.shape)
-
-    # if save_path is not None:
-    #     np.savez(save_path, **numpy_dict)
-
     env.close()
 
     return numpy_dict
 
 
-def wrap_data(demonstrations, difficulty):
-    env = gym.make('MiniGrid-MinimapForFalcon-v0', difficulty=difficulty)
+def wrap_data(demonstrations):
+    env = gym.make('MiniGrid-MinimapForFalcon-v0')
     env = HumanFOVWrapper(env)
 
     if demonstrations == {}:
@@ -198,7 +179,8 @@ def wrap_data(demonstrations, difficulty):
         actions = np.array(actions).reshape((-1, 1))
 
     rewards = np.array(rewards)
-    episode_starts = np.array(episode_starts[:-1])
+    # episode_starts = np.array(episode_starts[:-1])
+    episode_starts = np.array(episode_starts)
 
     assert len(observations) == len(actions)
 
@@ -212,4 +194,67 @@ def wrap_data(demonstrations, difficulty):
 
     return numpy_dict
 
-# generate_expert_traj()
+
+# According to the number of demonstrations and the test set ratio, we seperate the demonstrations into the training and test sets
+def gen_training_and_test_sets(demonstrations, difficulty, strategy, test_set_ratio, data_num):
+    training_dict = {
+        'actions': [],
+        'obs': [],
+        'rewards': [],
+        'episode_returns': [],
+        'episode_starts': []
+    }  # type: Dict[str, list]
+
+    test_dict = {
+        'actions': [],
+        'obs': [],
+        'rewards': [],
+        'episode_returns': [],
+        'episode_starts': []
+    }  # type: Dict[str, list]
+
+    training_file = 'falcon_' + difficulty + '_' + strategy + '_training'
+    test_file = 'falcon_' + difficulty + '_' + strategy + '_test'
+    demos_len = data_num
+
+    if demos_len < 2:
+        training_set = training_dict
+        test_set = test_dict
+        np.savez('expert_data/' + training_file, **training_set)
+        np.savez('expert_data/' + test_file, **test_set)
+        return
+
+    test_set_num = int(max(np.ceil(demos_len * test_set_ratio), 1))
+    test_idx = np.sort(np.random.choice(range(demos_len), test_set_num, replace=False)).tolist()
+    training_idx = [i for i in range(data_num) if i not in test_idx]
+    episode_starts_idx = [i for i, e in enumerate(demonstrations['episode_starts']) if e]
+
+    for ti in test_idx:
+        start_idx = episode_starts_idx[ti]
+        if ti == len(episode_starts_idx) - 1:
+            end_idx = len(demonstrations['actions'])
+        else:
+            end_idx = episode_starts_idx[ti + 1]
+        test_dict['actions'] += demonstrations['actions'][start_idx: end_idx]
+        test_dict['obs'] += demonstrations['obs'][start_idx: end_idx]
+        test_dict['rewards'] += demonstrations['rewards'][start_idx: end_idx]
+        test_dict['episode_returns'].append(demonstrations['episode_returns'][ti])
+        test_dict['episode_starts'] += demonstrations['episode_starts'][start_idx: end_idx]
+
+    for ti in training_idx:
+        start_idx = episode_starts_idx[ti]
+        if ti == len(episode_starts_idx) - 1:
+            end_idx = len(demonstrations['actions'])
+        else:
+            end_idx = episode_starts_idx[ti + 1]
+        training_dict['actions'] += demonstrations['actions'][start_idx: end_idx]
+        training_dict['obs'] += demonstrations['obs'][start_idx: end_idx]
+        training_dict['rewards'] += demonstrations['rewards'][start_idx: end_idx]
+        training_dict['episode_returns'].append(demonstrations['episode_returns'][ti])
+        training_dict['episode_starts'] += demonstrations['episode_starts'][start_idx: end_idx]
+
+    training_set = wrap_data(training_dict)
+    test_set = wrap_data(test_dict)
+
+    np.savez('expert_data/' + training_file, **training_set)
+    np.savez('expert_data/' + test_file, **test_set)

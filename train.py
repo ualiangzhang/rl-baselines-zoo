@@ -317,10 +317,11 @@ if __name__ == '__main__':
 
     def generate_demo(model):
         if args.env == 'MiniGrid-MinimapForFalcon-v0':
-            expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '.npz'
+            expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_training.npz'
             demo_file = Path(expert_demos)
             if not demo_file.is_file():
-                record_demos.generate_expert_traj()
+                record_demos.generate_expert_traj(args.test_set_ratio)
+
             dataset = ExpertDataset(expert_path=demo_file)
             model.expert_dataset = dataset
             return model
