@@ -17,6 +17,7 @@ from stable_baselines.common.vec_env import VecNormalize, VecFrameStack, VecEnv
 
 from utils import ALGOS, create_test_env, get_latest_run_id, get_saved_hyperparams, find_saved_model
 from utils.utils import StoreDict
+import gym_minigrid
 
 # Fix for breaking change in v2.6.0
 sys.modules['stable_baselines.ddpg.memory'] = stable_baselines.common.buffers
@@ -25,9 +26,9 @@ stable_baselines.common.buffers.Memory = stable_baselines.common.buffers.ReplayB
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', help='environment ID', type=str, default='CartPole-v1')
+    parser.add_argument('--env', help='environment ID', type=str, default='MiniGrid-MinimapForFalcon-v0')
     parser.add_argument('-f', '--folder', help='Log folder', type=str, default='logs')
-    parser.add_argument('--algo', help='RL Algorithm', default='trpo',
+    parser.add_argument('--algo', help='RL Algorithm', default='gail',
                         type=str, required=False, choices=list(ALGOS.keys()))
     parser.add_argument('-n', '--n-timesteps', help='number of timesteps', default=1000,
                         type=int)

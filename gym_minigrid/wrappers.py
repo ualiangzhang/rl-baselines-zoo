@@ -1176,7 +1176,7 @@ class HumanFOVWrapper(gym.core.Wrapper):
         out = np.stack([out] * 3, -1)
         return out
 
-    def render(self, tile_size=6):
+    def render(self, mode='rgb_array', tile_size=6):
         img = self.render2('rgb_array', tile_size=tile_size)
         self.window.show_img(img)
         return img
