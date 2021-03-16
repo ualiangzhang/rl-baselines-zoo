@@ -324,6 +324,7 @@ if __name__ == '__main__':
 
             dataset = ExpertDataset(expert_path=demo_file)
             model.expert_dataset = dataset
+            model.pretrain(dataset, n_epochs=100000)
             return model
         if args.expert_path != None:
             print("Loading expert demonstration")
@@ -343,6 +344,7 @@ if __name__ == '__main__':
             else:
                 print("No expert to generate demos")
                 raise ValueError('No expert to generate demos')
+            model.pretrain(dataset, n_epochs=100000)
         return model
 
     env = create_env(n_envs)
