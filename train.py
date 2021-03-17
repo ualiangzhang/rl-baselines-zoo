@@ -62,6 +62,12 @@ if __name__ == '__main__':
                         type=str, required=False)
     parser.add_argument('--demo-number', help='GAIL demonstration number', default=20,
                         type=int, required=False)
+    parser.add_argument('--bc-timesteps', help='the time steps of behavior cloning', default=int(1e5),
+                        type=int, required=False)
+    parser.add_argument('--bc-val', help='the time steps of behavior cloning validation', default=int(1e2),
+                        type=int, required=False)
+    parser.add_argument('--bc-train-fraction', help='the training set fraction in the data set for bc', default=0.9,
+                        type=float, required=False)
     # end gail parameter setting
     parser.add_argument('-n', '--n-timesteps', help='Overwrite the number of timesteps', default=-1,
                         type=int)
@@ -322,9 +328,9 @@ if __name__ == '__main__':
             if not demo_file.is_file():
                 record_demos.generate_expert_traj(args.test_set_ratio)
 
-            dataset = ExpertDataset(expert_path=demo_file, train_fraction=0.99)
+            dataset = ExpertDataset(expert_path=demo_file, train_fraction=args.bc_train_fraction)
             model.expert_dataset = dataset
-            model.pretrain(dataset, n_epochs=1000000, val_interval=10000)
+            model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val)
             return model
         if args.expert_path != None:
             print("Loading expert demonstration")
@@ -339,12 +345,12 @@ if __name__ == '__main__':
                 expert_model = ALGOS[args.expert_algo].load(args.expert_model, env=env)
                 expert_demos = args.env + '_' + args.expert_algo + '_expert'
                 generate_expert_traj(expert_model, expert_demos, n_episodes=args.demo_number)
-                dataset = ExpertDataset(expert_path=expert_demos + '.npz', train_fraction=0.99)
+                dataset = ExpertDataset(expert_path=expert_demos + '.npz', train_fraction=args.bc_train_fraction)
                 model.expert_dataset = dataset
             else:
                 print("No expert to generate demos")
                 raise ValueError('No expert to generate demos')
-            model.pretrain(dataset, n_epochs=1000000, val_interval=10000)
+            model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val)
         return model
 
     env = create_env(n_envs)
