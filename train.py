@@ -69,7 +69,7 @@ if __name__ == '__main__':
                         type=int, required=False)
     parser.add_argument('--bc-train-fraction', help='the training set fraction in the data set for bc', default=0.9,
                         type=float, required=False)
-    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=5e-4,
+    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=1e-4,
                         type=float, required=False)
     parser.add_argument('--bc-batch-size', help='the batch size to train behavior cloning', default=32,
                         type=int, required=False)
@@ -327,7 +327,7 @@ if __name__ == '__main__':
         return env
 
 
-    def generate_demo(model):
+    def generate_demo(model, save_path):
         if args.env == 'MiniGrid-MinimapForFalcon-v0':
             if args.bc_timesteps > 0:
                 expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '.npz'
@@ -342,7 +342,7 @@ if __name__ == '__main__':
                                     batch_size=args.bc_batch_size)
             model.expert_dataset = dataset
             model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val,
-                           learning_rate=args.bc_learning_rate)
+                           learning_rate=args.bc_learning_rate, save_path=save_path)
             return model
 
         if args.expert_path != None:
@@ -366,7 +366,7 @@ if __name__ == '__main__':
                 print("No expert to generate demos")
                 raise ValueError('No expert to generate demos')
             model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val,
-                           learning_rate=args.bc_learning_rate)
+                           learning_rate=args.bc_learning_rate, save_path=save_path)
         return model
 
 
@@ -439,7 +439,7 @@ if __name__ == '__main__':
                                       tensorboard_log=tensorboard_log, verbose=args.verbose, **hyperparams)
 
         if args.algo == 'gail':
-            model = generate_demo(model)
+            model = generate_demo(model, save_path)
 
         exp_folder = args.trained_agent[:-4]
         if normalize:
@@ -464,7 +464,7 @@ if __name__ == '__main__':
             ret_model = ALGOS[args.algo](env=create_env(n_envs, no_log=True), tensorboard_log=tensorboard_log,
                                          verbose=0, **kwargs)
             if args.algo == 'gail':
-                ret_model = generate_demo(ret_model)
+                ret_model = generate_demo(ret_model, save_path)
             return ret_model
 
 
@@ -490,7 +490,7 @@ if __name__ == '__main__':
         model = ALGOS[args.algo](env=env, tensorboard_log=tensorboard_log, verbose=args.verbose, **hyperparams)
 
         if args.algo == 'gail':
-            model = generate_demo(model)
+            model = generate_demo(model, save_path)
 
     kwargs = {}
     if args.log_interval > -1:

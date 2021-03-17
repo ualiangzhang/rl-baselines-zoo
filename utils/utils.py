@@ -22,7 +22,8 @@ from stable_baselines import PPO2, A2C, ACER, ACKTR, DQN, HER, SAC, TD3
 if mpi4py is None:
     DDPG, TRPO, GAIL = None, None, None
 else:
-    from stable_baselines import DDPG, TRPO, GAIL
+    from stable_baselines import DDPG, TRPO
+    from utils.BC_GAIL import BC_GAIL as GAIL
 
 from stable_baselines.common.vec_env import DummyVecEnv, VecNormalize, \
     VecFrameStack, SubprocVecEnv
