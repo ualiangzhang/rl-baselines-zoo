@@ -322,9 +322,9 @@ if __name__ == '__main__':
             if not demo_file.is_file():
                 record_demos.generate_expert_traj(args.test_set_ratio)
 
-            dataset = ExpertDataset(expert_path=demo_file)
+            dataset = ExpertDataset(expert_path=demo_file, train_fraction=0.99)
             model.expert_dataset = dataset
-            model.pretrain(dataset, n_epochs=100000)
+            model.pretrain(dataset, n_epochs=1000000, val_interval=10000)
             return model
         if args.expert_path != None:
             print("Loading expert demonstration")
@@ -339,12 +339,12 @@ if __name__ == '__main__':
                 expert_model = ALGOS[args.expert_algo].load(args.expert_model, env=env)
                 expert_demos = args.env + '_' + args.expert_algo + '_expert'
                 generate_expert_traj(expert_model, expert_demos, n_episodes=args.demo_number)
-                dataset = ExpertDataset(expert_path=expert_demos + '.npz')
+                dataset = ExpertDataset(expert_path=expert_demos + '.npz', train_fraction=0.99)
                 model.expert_dataset = dataset
             else:
                 print("No expert to generate demos")
                 raise ValueError('No expert to generate demos')
-            model.pretrain(dataset, n_epochs=100000)
+            model.pretrain(dataset, n_epochs=1000000, val_interval=10000)
         return model
 
     env = create_env(n_envs)
