@@ -72,7 +72,7 @@ if __name__ == '__main__':
                         type=int, required=False)
     parser.add_argument('--bc-train-fraction', help='the training set fraction in the data set for bc', default=0.9,
                         type=float, required=False)
-    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=1e-4,
+    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=3e-4,
                         type=float, required=False)
     parser.add_argument('--bc-batch-size', help='the batch size to train behavior cloning', default=32,
                         type=int, required=False)
