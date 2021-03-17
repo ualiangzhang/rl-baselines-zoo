@@ -197,6 +197,9 @@ def wrap_data(demonstrations):
 
 # According to the number of demonstrations and the test set ratio, we seperate the demonstrations into the training and test sets
 def gen_training_and_test_sets(demonstrations, difficulty, strategy, test_set_ratio, data_num):
+    data_file = 'falcon_' + difficulty + '_' + strategy
+    data_set = wrap_data(demonstrations)
+    np.savez('expert_data/' + data_file, **data_set)
     training_dict = {
         'actions': [],
         'obs': [],
@@ -256,5 +259,7 @@ def gen_training_and_test_sets(demonstrations, difficulty, strategy, test_set_ra
     training_set = wrap_data(training_dict)
     test_set = wrap_data(test_dict)
 
+
     np.savez('expert_data/' + training_file, **training_set)
     np.savez('expert_data/' + test_file, **test_set)
+
