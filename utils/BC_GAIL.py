@@ -4,6 +4,7 @@ import tensorflow as tf
 import os
 import math
 
+
 class BC_GAIL(GAIL):
     """
     Behavior Cloning (BC) + Generative Adversarial Imitation Learning (GAIL)
@@ -32,7 +33,7 @@ class BC_GAIL(GAIL):
         :return: (BaseRLModel) the pretrained model
         """
 
-        min_val_loss = math.inf
+        max_acc = 0
 
         continuous_actions = isinstance(self.action_space, gym.spaces.Box)
         discrete_actions = isinstance(self.action_space, gym.spaces.Discrete)
@@ -63,6 +64,12 @@ class BC_GAIL(GAIL):
                         labels=tf.stop_gradient(one_hot_actions)
                     )
                     loss = tf.reduce_mean(loss)
+
+                    real_actions = tf.squeeze(actions_ph)
+                    predicted_actions = tf.squeeze(tf.argmax(actions_logits_ph, axis=1))
+                    ret = tf.equal(predicted_actions, real_actions)
+                    accuracy = tf.reduce_sum(tf.cast(tf.equal(ret, True), tf.int32))
+
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, epsilon=adam_epsilon)
                 optim_op = optimizer.minimize(loss, var_list=self.params)
 
@@ -87,24 +94,29 @@ class BC_GAIL(GAIL):
 
             if self.verbose > 0 and (epoch_idx + 1) % val_interval == 0:
                 val_loss = 0.0
+                acc = 0.0
                 # Full pass on the validation set
                 for _ in range(len(dataset.val_loader)):
                     expert_obs, expert_actions = dataset.get_next_batch('val')
-                    val_loss_, = self.sess.run([loss], {obs_ph: expert_obs,
-                                                        actions_ph: expert_actions})
+                    val_loss_, acc_ = self.sess.run([loss, accuracy], {obs_ph: expert_obs,
+                                                                       actions_ph: expert_actions})
                     val_loss += val_loss_
+                    acc += acc_
 
                 val_loss /= len(dataset.val_loader)
+                acc /= len(dataset.val_loader)
                 # save the bc training model with the lowest validation loss
-                if val_loss < min_val_loss:
-                    min_val_loss = val_loss
+                if acc > max_acc:
+                    max_acc = acc
                     self.save("{}/{}".format(save_path, 'pretrained_bc_model'))
 
                 if self.verbose > 0:
                     print("==== Training progress {:.2f}% ====".format(100 * (epoch_idx + 1) / n_epochs))
                     print('Epoch {}'.format(epoch_idx + 1))
-                    print("Training loss: {:.6f}, Validation loss: {:.6f}".format(train_loss, val_loss))
+                    print("Training loss: {:.6f}, Validation loss: {:.6f}, Action prediction accuracy: {:.6f}".format(
+                        train_loss, val_loss, acc))
                     print()
+
             # Free memory
             del expert_obs, expert_actions
         if self.verbose > 0:

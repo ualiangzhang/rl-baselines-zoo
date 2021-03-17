@@ -63,6 +63,9 @@ if __name__ == '__main__':
                         type=str, required=False)
     parser.add_argument('--demo-number', help='GAIL demonstration number', default=20,
                         type=int, required=False)
+    parser.add_argument('--pretrained-bc-model', help='pretrained behavior cloning model',
+                        default='logs/gail/MiniGrid-MinimapForFalcon-v0_14/pretrained_bc_model.zip',
+                        type=str, required=False)
     parser.add_argument('--bc-timesteps', help='the time steps of behavior cloning', default=int(1e5),
                         type=int, required=False)
     parser.add_argument('--bc-val', help='the time steps of behavior cloning validation', default=int(1e2),
@@ -329,6 +332,10 @@ if __name__ == '__main__':
 
     def generate_demo(model, save_path):
         if args.env == 'MiniGrid-MinimapForFalcon-v0':
+            if args.pretrained_bc_model != None:
+                print('Loading pretrained BC model')
+                model.load(args.pretrained_bc_model, env=env)
+                print()
             if args.bc_timesteps > 0:
                 expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '.npz'
             else:
