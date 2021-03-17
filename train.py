@@ -58,7 +58,8 @@ if __name__ == '__main__':
                         type=str, required=False, choices=list(ALGOS.keys()))
     parser.add_argument('--expert-model', help='expert RL model path', default='trained_agents/ppo2',
                         type=str, required=False, choices=list(ALGOS.keys()))
-    parser.add_argument('--expert-path', help='GAIL demonstration path', default='expert_data/CartPole-v1_ppo2_expert.npz',
+    parser.add_argument('--expert-path', help='GAIL demonstration path',
+                        default='expert_data/CartPole-v1_ppo2_expert.npz',
                         type=str, required=False)
     parser.add_argument('--demo-number', help='GAIL demonstration number', default=20,
                         type=int, required=False)
@@ -68,6 +69,10 @@ if __name__ == '__main__':
                         type=int, required=False)
     parser.add_argument('--bc-train-fraction', help='the training set fraction in the data set for bc', default=0.9,
                         type=float, required=False)
+    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=5e-4,
+                        type=float, required=False)
+    parser.add_argument('--bc-batch-size', help='the batch size to train behavior cloning', default=32,
+                        type=int, required=False)
     # end gail parameter setting
     parser.add_argument('-n', '--n-timesteps', help='Overwrite the number of timesteps', default=-1,
                         type=int)
@@ -321,6 +326,7 @@ if __name__ == '__main__':
             env = HERGoalEnvWrapper(env)
         return env
 
+
     def generate_demo(model):
         if args.env == 'MiniGrid-MinimapForFalcon-v0':
             if args.bc_timesteps > 0:
@@ -332,14 +338,17 @@ if __name__ == '__main__':
             if not demo_file.is_file():
                 record_demos.generate_expert_traj(args.test_set_ratio)
 
-            dataset = ExpertDataset(expert_path=demo_file, train_fraction=args.bc_train_fraction)
+            dataset = ExpertDataset(expert_path=demo_file, train_fraction=args.bc_train_fraction,
+                                    batch_size=args.bc_batch_size)
             model.expert_dataset = dataset
-            model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val)
+            model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val,
+                           learning_rate=args.bc_learning_rate)
             return model
 
         if args.expert_path != None:
             print("Loading expert demonstration")
-            dataset = ExpertDataset(expert_path=args.expert_path)
+            dataset = ExpertDataset(expert_path=args.expert_path, train_fraction=args.bc_train_fraction,
+                                    batch_size=args.bc_batch_size)
             model.expert_dataset = dataset
         else:
             print("Generating expert demonstration")
@@ -350,13 +359,16 @@ if __name__ == '__main__':
                 expert_model = ALGOS[args.expert_algo].load(args.expert_model, env=env)
                 expert_demos = args.env + '_' + args.expert_algo + '_expert'
                 generate_expert_traj(expert_model, expert_demos, n_episodes=args.demo_number)
-                dataset = ExpertDataset(expert_path=expert_demos + '.npz', train_fraction=args.bc_train_fraction)
+                dataset = ExpertDataset(expert_path=expert_demos + '.npz', train_fraction=args.bc_train_fraction,
+                                        batch_size=args.bc_batch_size)
                 model.expert_dataset = dataset
             else:
                 print("No expert to generate demos")
                 raise ValueError('No expert to generate demos')
-            model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val)
+            model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val,
+                           learning_rate=args.bc_learning_rate)
         return model
+
 
     env = create_env(n_envs)
     # Create test env if needed, do not normalize reward
@@ -450,7 +462,7 @@ if __name__ == '__main__':
             Helper to create a model with different hyperparameters
             """
             ret_model = ALGOS[args.algo](env=create_env(n_envs, no_log=True), tensorboard_log=tensorboard_log,
-                                    verbose=0, **kwargs)
+                                         verbose=0, **kwargs)
             if args.algo == 'gail':
                 ret_model = generate_demo(ret_model)
             return ret_model
@@ -479,7 +491,6 @@ if __name__ == '__main__':
 
         if args.algo == 'gail':
             model = generate_demo(model)
-
 
     kwargs = {}
     if args.log_interval > -1:
