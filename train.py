@@ -323,9 +323,12 @@ if __name__ == '__main__':
 
     def generate_demo(model):
         if args.env == 'MiniGrid-MinimapForFalcon-v0':
-            expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_training.npz'
+            if args.bc_timesteps > 0:
+                expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '.npz'
+            else:
+                expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_training.npz'
             demo_file = Path(expert_demos)
-            record_demos.generate_expert_traj(args.test_set_ratio)
+
             if not demo_file.is_file():
                 record_demos.generate_expert_traj(args.test_set_ratio)
 
@@ -333,6 +336,7 @@ if __name__ == '__main__':
             model.expert_dataset = dataset
             model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val)
             return model
+
         if args.expert_path != None:
             print("Loading expert demonstration")
             dataset = ExpertDataset(expert_path=args.expert_path)
