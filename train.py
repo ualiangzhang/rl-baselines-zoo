@@ -64,15 +64,15 @@ if __name__ == '__main__':
     parser.add_argument('--demo-number', help='GAIL demonstration number', default=20,
                         type=int, required=False)
     parser.add_argument('--pretrained-bc-model', help='pretrained behavior cloning model',
-                        default='logs/gail/MiniGrid-MinimapForFalcon-v0_14/pretrained_bc_model.zip',
+                        default=None,
                         type=str, required=False)
-    parser.add_argument('--bc-timesteps', help='the time steps of behavior cloning', default=int(1e5),
+    parser.add_argument('--bc-timesteps', help='the time steps of behavior cloning', default=int(1e6),
                         type=int, required=False)
     parser.add_argument('--bc-val', help='the time steps of behavior cloning validation', default=int(1e2),
                         type=int, required=False)
     parser.add_argument('--bc-train-fraction', help='the training set fraction in the data set for bc', default=0.9,
                         type=float, required=False)
-    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=3e-4,
+    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=1e-4,
                         type=float, required=False)
     parser.add_argument('--bc-batch-size', help='the batch size to train behavior cloning', default=32,
                         type=int, required=False)

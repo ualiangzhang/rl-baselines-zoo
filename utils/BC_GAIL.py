@@ -78,6 +78,7 @@ class BC_GAIL(GAIL):
         if self.verbose > 0:
             print("Pretraining with Behavior Cloning...")
 
+        training_acc = 0.0
         for epoch_idx in range(int(n_epochs)):
             train_loss = 0.0
             # Full pass on the training set
@@ -87,35 +88,40 @@ class BC_GAIL(GAIL):
                     obs_ph: expert_obs,
                     actions_ph: expert_actions,
                 }
-                train_loss_, _ = self.sess.run([loss, optim_op], feed_dict)
+                train_loss_, _, training_acc_ = self.sess.run([loss, optim_op, accuracy], feed_dict)
                 train_loss += train_loss_
+                training_acc += training_acc_
 
             train_loss /= len(dataset.train_loader)
 
+
             if self.verbose > 0 and (epoch_idx + 1) % val_interval == 0:
                 val_loss = 0.0
-                acc = 0.0
+                val_acc = 0.0
                 # Full pass on the validation set
                 for _ in range(len(dataset.val_loader)):
                     expert_obs, expert_actions = dataset.get_next_batch('val')
-                    val_loss_, acc_ = self.sess.run([loss, accuracy], {obs_ph: expert_obs,
-                                                                       actions_ph: expert_actions})
+                    val_loss_, val_acc_ = self.sess.run([loss, accuracy], {obs_ph: expert_obs,
+                                                                           actions_ph: expert_actions})
                     val_loss += val_loss_
-                    acc += acc_
+                    val_acc += val_acc_
 
                 val_loss /= len(dataset.val_loader)
-                acc /= len(dataset.val_loader)
+                val_acc /= len(dataset.val_loader)
                 # save the bc training model with the lowest validation loss
-                if acc > max_acc:
-                    max_acc = acc
+                if val_acc > max_acc:
+                    max_acc = val_acc
                     self.save("{}/{}".format(save_path, 'pretrained_bc_model'))
 
                 if self.verbose > 0:
+                    training_acc /= (len(dataset.train_loader) * val_interval)
                     print("==== Training progress {:.2f}% ====".format(100 * (epoch_idx + 1) / n_epochs))
                     print('Epoch {}'.format(epoch_idx + 1))
-                    print("Training loss: {:.6f}, Validation loss: {:.6f}, Action prediction accuracy: {:.6f}".format(
-                        train_loss, val_loss, acc))
+                    print(
+                        "Training loss: {:.6f}, Validation loss: {:.6f}, training accuracy: {:.6f}, validation accuracy: {:.6f}".format(
+                            train_loss, val_loss, training_acc, val_acc))
                     print()
+                    training_acc = 0.0
 
             # Free memory
             del expert_obs, expert_actions
