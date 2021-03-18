@@ -94,7 +94,6 @@ class BC_GAIL(GAIL):
 
             train_loss /= len(dataset.train_loader)
 
-
             if self.verbose > 0 and (epoch_idx + 1) % val_interval == 0:
                 val_loss = 0.0
                 val_acc = 0.0
@@ -107,14 +106,14 @@ class BC_GAIL(GAIL):
                     val_acc += val_acc_
 
                 val_loss /= len(dataset.val_loader)
-                val_acc /= len(dataset.val_loader)
+                val_acc /= len(dataset.val_loader) * dataset.val_loader.batch_size
                 # save the bc training model with the lowest validation loss
                 if val_acc > max_acc:
                     max_acc = val_acc
                     self.save("{}/{}".format(save_path, 'pretrained_bc_model'))
 
                 if self.verbose > 0:
-                    training_acc /= (len(dataset.train_loader) * val_interval)
+                    training_acc /= (len(dataset.train_loader) * dataset.train_loader.batch_size * val_interval)
                     print("==== Training progress {:.2f}% ====".format(100 * (epoch_idx + 1) / n_epochs))
                     print('Epoch {}'.format(epoch_idx + 1))
                     print(
