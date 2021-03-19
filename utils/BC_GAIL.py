@@ -34,6 +34,8 @@ class BC_GAIL(GAIL):
         """
 
         max_acc = 0
+        max_acc2 = 0
+        max_acc3 = 0
 
         continuous_actions = isinstance(self.action_space, gym.spaces.Box)
         discrete_actions = isinstance(self.action_space, gym.spaces.Discrete)
@@ -124,10 +126,18 @@ class BC_GAIL(GAIL):
                 val_acc /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
                 val_acc2 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
                 val_acc3 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
-                # save the bc training model with the lowest validation loss
+                # save the bc training models with the highest prediction accuracies
                 if val_acc > max_acc:
                     max_acc = val_acc
                     self.save("{}/{}".format(save_path, 'pretrained_bc_model'))
+
+                if val_acc2 > max_acc2:
+                    max_acc2 = val_acc2
+                    self.save("{}/{}".format(save_path, 'pretrained_bc_model2'))
+
+                if val_acc3 > max_acc3:
+                    max_acc3 = val_acc3
+                    self.save("{}/{}".format(save_path, 'pretrained_bc_model3'))
 
                 if self.verbose > 0:
                     training_acc /= (len(dataset.train_loader) * dataset.train_loader.batch_size * val_interval)
@@ -136,6 +146,9 @@ class BC_GAIL(GAIL):
                     print(
                         "Training loss: {:.6f}, Validation loss: {:.6f}, training accuracy: {:.6f}, validation accuracy: {:.6f}, validation accuracy2: {:.6f}, validation accuracy3: {:.6f}".format(
                             train_loss, val_loss, training_acc, val_acc, val_acc2, val_acc3))
+                    print(
+                        "best validation accuracy: {:.6f}, best validation accuracy2: {:.6f}, best validation accuracy3: {:.6f}".format(
+                            max_acc, max_acc2, max_acc3))
                     print()
                     training_acc = 0.0
 
