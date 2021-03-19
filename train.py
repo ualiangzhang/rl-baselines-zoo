@@ -261,7 +261,7 @@ if __name__ == '__main__':
                                             save_path=save_path, name_prefix='rl_model', verbose=1))
 
     env_kwargs = {} if args.env_kwargs is None else args.env_kwargs
-
+    env_kwargs['difficulty'] = args.level
 
     def create_env(n_envs, eval_env=False, no_log=False):
         """
