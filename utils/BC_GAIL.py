@@ -127,10 +127,6 @@ class BC_GAIL(GAIL):
                 val_acc2 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
                 val_acc3 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
                 # save the bc training models with the highest prediction accuracies
-                if training_acc >= 0.99:
-                    print('save the best bc model')
-                    self.save("{}/{}".format(save_path, 'best_bc_model'))
-
                 if val_acc > max_acc:
                     max_acc = val_acc
                     self.save("{}/{}".format(save_path, 'pretrained_bc_model'))
@@ -145,6 +141,9 @@ class BC_GAIL(GAIL):
 
                 if self.verbose > 0:
                     training_acc /= (len(dataset.train_loader) * dataset.train_loader.batch_size * val_interval)
+                    if training_acc >= 0.99:
+                        print('save the best bc model')
+                        self.save("{}/{}".format(save_path, 'best_bc_model'))
                     print("==== Training progress {:.2f}% ====".format(100 * (epoch_idx + 1) / n_epochs))
                     print('Epoch {}'.format(epoch_idx + 1))
                     print(
