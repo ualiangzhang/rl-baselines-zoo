@@ -127,6 +127,9 @@ class BC_GAIL(GAIL):
                 val_acc2 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
                 val_acc3 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
                 # save the bc training models with the highest prediction accuracies
+                if training_acc >= 0.99:
+                    self.save("{}/{}".format(save_path, 'best_bc_model'))
+
                 if val_acc > max_acc:
                     max_acc = val_acc
                     self.save("{}/{}".format(save_path, 'pretrained_bc_model'))

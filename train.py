@@ -70,11 +70,11 @@ if __name__ == '__main__':
                         type=int, required=False)
     parser.add_argument('--bc-val', help='the time steps of behavior cloning validation', default=int(1e2),
                         type=int, required=False)
-    parser.add_argument('--bc-train-fraction', help='the training set fraction in the data set for bc', default=0.9,
+    parser.add_argument('--bc-train-fraction', help='the training set fraction in the data set for bc', default=0.999,
                         type=float, required=False)
-    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=1e-4,
+    parser.add_argument('--bc-learning-rate', help='the time steps of behavior cloning validation', default=5e-4,
                         type=float, required=False)
-    parser.add_argument('--bc-batch-size', help='the batch size to train behavior cloning', default=32,
+    parser.add_argument('--bc-batch-size', help='the batch size to train behavior cloning', default=128,
                         type=int, required=False)
     # end gail parameter setting
     parser.add_argument('-n', '--n-timesteps', help='Overwrite the number of timesteps', default=-1,
@@ -337,7 +337,7 @@ if __name__ == '__main__':
                 model.load(args.pretrained_bc_model, env=env)
                 print()
             if args.bc_timesteps > 0:
-                expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '.npz'
+                expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_training.npz'
             else:
                 expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_training.npz'
             demo_file = Path(expert_demos)
