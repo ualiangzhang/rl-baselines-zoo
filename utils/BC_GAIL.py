@@ -65,10 +65,20 @@ class BC_GAIL(GAIL):
                     )
                     loss = tf.reduce_mean(loss)
 
-                    real_actions = tf.squeeze(actions_ph)
-                    predicted_actions = tf.squeeze(tf.argmax(actions_logits_ph, axis=1))
+                    real_actions = tf.cast(tf.squeeze(actions_ph), tf.int32)
+                    predicted_actions = tf.cast(tf.squeeze(tf.argmax(actions_logits_ph, axis=1)),
+                                                tf.int32)  # return top 1 actions
+                    predicted_actions2 = tf.cast(tf.math.top_k(actions_logits_ph, k=2)[1],
+                                                 tf.int32)  # return top 2 actions
+                    predicted_actions3 = tf.cast(tf.math.top_k(actions_logits_ph, k=3)[1],
+                                                 tf.int32)  # return top 3 actions
+                    real_actions_reshaped = tf.cast(tf.reshape(actions_ph, [-1, 1]), tf.int32)
                     ret = tf.equal(predicted_actions, real_actions)
                     accuracy = tf.reduce_sum(tf.cast(tf.equal(ret, True), tf.int32))
+                    ret2 = tf.reduce_any(tf.equal(predicted_actions2, real_actions_reshaped), -1)
+                    accuracy2 = tf.reduce_sum(tf.cast(tf.equal(ret2, True), tf.int32))
+                    ret3 = tf.reduce_any(tf.equal(predicted_actions3, real_actions_reshaped), -1)
+                    accuracy3 = tf.reduce_sum(tf.cast(tf.equal(ret3, True), tf.int32))
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, epsilon=adam_epsilon)
                 optim_op = optimizer.minimize(loss, var_list=self.params)
@@ -97,16 +107,23 @@ class BC_GAIL(GAIL):
             if self.verbose > 0 and (epoch_idx + 1) % val_interval == 0:
                 val_loss = 0.0
                 val_acc = 0.0
+                val_acc2 = 0.0
+                val_acc3 = 0.0
                 # Full pass on the validation set
                 for _ in range(len(dataset.val_loader)):
                     expert_obs, expert_actions = dataset.get_next_batch('val')
-                    val_loss_, val_acc_ = self.sess.run([loss, accuracy], {obs_ph: expert_obs,
-                                                                           actions_ph: expert_actions})
+                    val_loss_, val_acc_, val_acc2_, val_acc3_, = self.sess.run([loss, accuracy, accuracy2, accuracy3],
+                                                                               {obs_ph: expert_obs,
+                                                                                actions_ph: expert_actions})
                     val_loss += val_loss_
                     val_acc += val_acc_
+                    val_acc2 += val_acc2_
+                    val_acc3 += val_acc3_
 
                 val_loss /= len(dataset.val_loader)
-                val_acc /= len(dataset.val_loader) * dataset.val_loader.batch_size
+                val_acc /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
+                val_acc2 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
+                val_acc3 /= (len(dataset.val_loader) * dataset.val_loader.batch_size)
                 # save the bc training model with the lowest validation loss
                 if val_acc > max_acc:
                     max_acc = val_acc
@@ -117,8 +134,8 @@ class BC_GAIL(GAIL):
                     print("==== Training progress {:.2f}% ====".format(100 * (epoch_idx + 1) / n_epochs))
                     print('Epoch {}'.format(epoch_idx + 1))
                     print(
-                        "Training loss: {:.6f}, Validation loss: {:.6f}, training accuracy: {:.6f}, validation accuracy: {:.6f}".format(
-                            train_loss, val_loss, training_acc, val_acc))
+                        "Training loss: {:.6f}, Validation loss: {:.6f}, training accuracy: {:.6f}, validation accuracy: {:.6f}, validation accuracy2: {:.6f}, validation accuracy3: {:.6f}".format(
+                            train_loss, val_loss, training_acc, val_acc, val_acc2, val_acc3))
                     print()
                     training_acc = 0.0
 
