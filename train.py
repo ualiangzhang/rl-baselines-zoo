@@ -41,7 +41,8 @@ from utils.callbacks import SaveVecNormalizeCallback
 from utils.noise import LinearNormalActionNoise
 from utils.utils import StoreDict
 
-from stable_baselines.gail import ExpertDataset, generate_expert_traj
+from stable_baselines.gail import generate_expert_traj
+from utils.dataset import ExpertDataset
 import gym_minigrid  # import Falcon environment
 from pathlib import Path
 
@@ -263,6 +264,7 @@ if __name__ == '__main__':
     env_kwargs = {} if args.env_kwargs is None else args.env_kwargs
     env_kwargs['difficulty'] = args.level
 
+
     def create_env(n_envs, eval_env=False, no_log=False):
         """
         Create the environment and wrap it if necessary
@@ -336,17 +338,17 @@ if __name__ == '__main__':
                 print('Loading pretrained BC model')
                 model.load(args.pretrained_bc_model, env=env)
                 print()
-            if args.bc_timesteps > 0:
-                expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '.npz'
-            else:
-                expert_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_training.npz'
-            demo_file = Path(expert_demos)
 
-            if not demo_file.is_file():
+            training_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_training.npz'
+            test_demos = 'expert_data/falcon_' + args.level + '_' + args.strategy + '_test.npz'
+            training_file = Path(training_demos)
+            test_file = Path(test_demos)
+
+            if not training_file.is_file() or not test_file.is_file():
                 record_demos.generate_expert_traj(args.test_set_ratio)
 
-            dataset = ExpertDataset(expert_path=demo_file, train_fraction=args.bc_train_fraction,
-                                    batch_size=args.bc_batch_size)
+            dataset = ExpertDataset(training_path=training_file, test_path=test_file,
+                                    train_fraction=args.bc_train_fraction, batch_size=args.bc_batch_size)
             model.expert_dataset = dataset
             model.pretrain(dataset, n_epochs=args.bc_timesteps, val_interval=args.bc_val,
                            learning_rate=args.bc_learning_rate, save_path=save_path)
