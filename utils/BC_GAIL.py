@@ -151,6 +151,7 @@ class BC_GAIL(GAIL):
                             max_acc, max_acc2, max_acc3))
                     print()
                     training_acc = 0.0
+                    self.save("{}/{}".format(save_path, 'last_bc_model'))
 
             # Free memory
             del expert_obs, expert_actions
