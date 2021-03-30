@@ -656,11 +656,12 @@ class HumanFOVWrapper(gym.core.Wrapper):
     Returns the observation of the size of the actual map
     """
 
-    def __init__(self, env, agent_pos=None, frame_stack=3):
+    def __init__(self, env, agent_pos=None, location_stack=3, frame_stack=4):
         super().__init__(env)
 
         self.env = env
         self.initial_agent_pos = agent_pos
+        self.location_stack = location_stack
         self.frame_stack = frame_stack
 
         self.window = Window('gym_minigrid - Falcon ' + str(env.difficulty))
@@ -759,7 +760,7 @@ class HumanFOVWrapper(gym.core.Wrapper):
         observation_space = gym.spaces.Box(
             low=0,
             high=1,
-            shape=(43,),
+            shape=(43 * self.frame_stack,),
             dtype='float32'
         )
 
@@ -771,8 +772,9 @@ class HumanFOVWrapper(gym.core.Wrapper):
         self.observation_space = observation_space
         self.obs = np.zeros((1, self.height, self.width))
         self.sim_state = np.zeros((43,), dtype='uint8')
-        self.pre_location = collections.deque(maxlen=self.frame_stack)
-        for _ in range(self.frame_stack):
+        self.sim_state_stack = np.zeros((43 * self.frame_stack,), dtype='uint8')
+        self.pre_location = collections.deque(maxlen=self.location_stack)
+        for _ in range(self.location_stack):
             self.pre_location.append(self.agent_pos)
 
         # SIMPLE: Action is either move forward, turn left by 10 degrees, turn right by 10 degrees, toggle
@@ -863,16 +865,16 @@ class HumanFOVWrapper(gym.core.Wrapper):
 
     def gen_obs(self):
         self.pre_location.append(self.agent_pos)
-        for i in range(self.frame_stack):
+        for i in range(self.location_stack):
             self.obs[0, -1, 2 * i] = self.pre_location[i][0]
             self.obs[0, -1, 2 * i + 1] = self.pre_location[i][1]
 
         self.sim_state[0:len(self.victim_status)] = self.victim_status
-        for i in range(self.frame_stack):
+        for i in range(self.location_stack):
             self.sim_state[len(self.victim_status) + 2 * i] = self.pre_location[i][0]
             self.sim_state[len(self.victim_status) + 2 * i + 1] = self.pre_location[i][1]
 
-        self.sim_state[len(self.victim_status) + self.frame_stack * 2] = int(self.is_yellow_victim_alive)
+        self.sim_state[len(self.victim_status) + self.location_stack * 2] = int(self.is_yellow_victim_alive)
 
         if len(np.where(np.all(self.victim_locations == self.agent_pos, axis=1))[0]) > 0:
             self.sim_state[-2] = self.victim_status[int(np.where(
@@ -881,7 +883,11 @@ class HumanFOVWrapper(gym.core.Wrapper):
             self.sim_state[-2] = 0
         self.sim_state[-1] = self.triaging_time
 
-        return copy.deepcopy((self.sim_state / 255).astype('float32'))
+        for fs in range(self.frame_stack - 1):
+            self.sim_state_stack[fs * 43:(fs + 1) * 43] = self.sim_state_stack[(fs + 1) * 43:(fs + 2) * 43]
+
+        self.sim_state_stack[(self.frame_stack - 1) * 43:len(self.sim_state_stack)] = self.sim_state
+        return copy.deepcopy((self.sim_state_stack / 255).astype('float32'))
 
     def check_remaining_goals(self):
         if self.goals_acheived == self.total_goals:
@@ -931,7 +937,7 @@ class HumanFOVWrapper(gym.core.Wrapper):
         self.gt_map_state = copy.deepcopy(self.initial_gt_map_state)
         self.observed_map_state = copy.deepcopy(self.initial_gt_map_state)
 
-        for _ in range(self.frame_stack):
+        for _ in range(self.location_stack):
             self.pre_location.append(self.agent_pos)
 
         current_pos = self.agent_pos
@@ -954,10 +960,11 @@ class HumanFOVWrapper(gym.core.Wrapper):
         self.obs = np.zeros((1, self.height, self.width))
         self.victim_status = copy.deepcopy(self.initial_victim_status)
         self.sim_state = np.zeros((43,), dtype='uint8')
+        self.sim_state_stack = np.zeros((43 * self.frame_stack,), dtype='uint8')
 
-        obs = self.gen_obs()
-        # for _ in range(self.frame_stack):
-        #     obs = self.gen_obs()
+        # obs = self.gen_obs()
+        for _ in range(self.frame_stack):
+            obs = self.gen_obs()
         return obs
 
     def get_legal_actions(self):
