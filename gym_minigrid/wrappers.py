@@ -656,7 +656,7 @@ class HumanFOVWrapper(gym.core.Wrapper):
     Returns the observation of the size of the actual map
     """
 
-    def __init__(self, env, agent_pos=None, location_stack=3, frame_stack=16):
+    def __init__(self, env, agent_pos=None, location_stack=3, frame_stack=1):
         super().__init__(env)
 
         self.env = env
